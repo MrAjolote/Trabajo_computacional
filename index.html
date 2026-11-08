@@ -1,0 +1,1168 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Dijkstra paso a paso</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Concepto: el grafo ocupa la columna izquierda sobre un fondo de papel punteado; a la derecha va el panel de la etapa.
+   Una barra de reproducción fija abajo permite avanzar y retroceder en cualquier momento. */
+:root {
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --bg: #EBF0F3;
+  --surface: #FFFFFF;
+  --surface-2: #F3F6F8;
+  --paper: #F8FAFB;
+  --ink: #12202B;
+  --ink-2: #47596A;
+  --ink-3: #66798A;
+  --line: #D1DAE1;
+  --line-strong: #AEBCC7;
+  --accent: #0B6786;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #D8EDF5;
+  --flash: #FFE9A8;
+
+  --edge: #8A9DAB;
+  --edge-tree: #0B6786;
+  --edge-active: #D9690F;
+  --edge-path: #168A52;
+
+  --n-idle: #FFFFFF;
+  --n-frontier: #CBE6F1;
+  --n-visited: #C3CFD8;
+  --n-current: #FFC531;
+  --n-neighbor: #FF9A4D;
+  --n-path: #72D69C;
+  --n-stroke: #1E2F3B;
+
+  --ok: #17784A;
+  --ok-soft: #DCF2E5;
+  --warn: #8F5200;
+  --warn-soft: #FFEFCF;
+  --bad: #B3261E;
+  --bad-soft: #FBE3E0;
+  --tie: #6B4FB3;
+  --tie-soft: #EBE5F8;
+  --shadow: 0 1px 2px rgba(18, 32, 43, .05), 0 6px 20px rgba(18, 32, 43, .05);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0A1218; --surface: #131E27; --surface-2: #1A2833; --paper: #0F1920;
+    --ink: #E5EDF2; --ink-2: #A2B4C1; --ink-3: #8497A6;
+    --line: #263643; --line-strong: #3A4D5C;
+    --accent: #53BBDC; --accent-ink: #04202B; --accent-soft: #143342; --flash: #5A4510;
+    --edge: #5F7585; --edge-tree: #53BBDC; --edge-active: #FF9A4D; --edge-path: #5FD091;
+    --n-idle: #1A2833; --n-frontier: #1F5069; --n-visited: #3A4955; --n-current: #FFC531; --n-neighbor: #FF9A4D; --n-path: #72D69C; --n-stroke: #9FB3C1;
+    --ok: #6FD39A; --ok-soft: #14352A; --warn: #F2B968; --warn-soft: #3A2B10; --bad: #FF8F85; --bad-soft: #40201D; --tie: #B7A2F2; --tie-soft: #2B2442;
+    --shadow: none;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0A1218; --surface: #131E27; --surface-2: #1A2833; --paper: #0F1920;
+  --ink: #E5EDF2; --ink-2: #A2B4C1; --ink-3: #8497A6;
+  --line: #263643; --line-strong: #3A4D5C;
+  --accent: #53BBDC; --accent-ink: #04202B; --accent-soft: #143342; --flash: #5A4510;
+  --edge: #5F7585; --edge-tree: #53BBDC; --edge-active: #FF9A4D; --edge-path: #5FD091;
+  --n-idle: #1A2833; --n-frontier: #1F5069; --n-visited: #3A4955; --n-current: #FFC531; --n-neighbor: #FF9A4D; --n-path: #72D69C; --n-stroke: #9FB3C1;
+  --ok: #6FD39A; --ok-soft: #14352A; --warn: #F2B968; --warn-soft: #3A2B10; --bad: #FF8F85; --bad-soft: #40201D; --tie: #B7A2F2; --tie-soft: #2B2442;
+  --shadow: none;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  padding-block: 20px 28px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+button, input, select { font: inherit; color: inherit; }
+h1, h2, p { margin: 0; }
+.app { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+/* Cabecera y etapas */
+.top { display: flex; flex-direction: column; gap: 14px; }
+h1 { font: 700 clamp(28px, 4.4vw, 40px)/1.05 var(--font-display); letter-spacing: -.02em; text-wrap: balance; }
+.lede { color: var(--ink-2); max-width: 62ch; margin-top: 6px; }
+.steps { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.steps button {
+  display: flex; align-items: center; gap: 10px; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+  padding: 6px 16px 6px 6px; font-weight: 500; color: var(--ink-2);
+}
+.steps .num {
+  display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--surface-2); border: 1px solid var(--line-strong);
+  font: 600 13px var(--font-mono); color: var(--ink-2);
+}
+.steps button[aria-current="step"] { border-color: var(--accent); color: var(--ink); box-shadow: 0 0 0 1px var(--accent) inset; }
+.steps button[aria-current="step"] .num { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.steps button.done .num { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.steps button:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Estructura */
+.grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 959px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; box-shadow: var(--shadow); min-width: 0; }
+.side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.panel { display: flex; flex-direction: column; gap: 16px; }
+@media (min-width: 960px) and (min-height: 780px) { .graph-card { position: sticky; top: 12px; } }
+h2 { font: 600 19px/1.2 var(--font-display); letter-spacing: -.01em; }
+.card-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin-bottom: 4px; }
+.meta { color: var(--ink-3); font: 500 13px var(--font-mono); }
+.hint { color: var(--ink-2); font-size: 14px; }
+.graph-card .hint { min-height: 21px; margin-bottom: 10px; }
+
+/* Botones y campos */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px;
+  padding: 8px 14px; font-weight: 500; line-height: 1.2; min-height: 40px;
+}
+.btn:hover:not(:disabled) { background: var(--surface-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn svg { width: 16px; height: 16px; flex: none; fill: currentColor; }
+.btn.icon { padding: 8px 10px; }
+button:focus-visible, input:focus-visible, select:focus-visible, .node:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field > label, .label { font: 600 12px var(--font-body); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+select, input[type="number"] {
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px;
+  padding: 8px 10px; min-height: 40px; width: 100%; min-width: 0;
+}
+input[type="range"] { width: 100%; accent-color: var(--accent); min-height: 28px; }
+.stack { display: flex; flex-direction: column; gap: 16px; margin-top: 14px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.range-row { display: flex; align-items: center; gap: 14px; }
+.range-row output { font: 600 22px var(--font-mono); min-width: 2ch; text-align: right; font-variant-numeric: tabular-nums; }
+.seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; align-self: flex-start; }
+.seg button { border: 0; background: var(--surface); padding: 8px 18px; cursor: pointer; font-weight: 500; min-height: 40px; }
+.seg button + button { border-left: 1px solid var(--line-strong); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.trio { display: grid; grid-template-columns: 1fr 1fr 96px; gap: 10px; }
+.pair { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: end; }
+.pair .between { padding-bottom: 8px; color: var(--ink-3); font: 600 18px var(--font-mono); }
+.note { font-size: 14px; color: var(--ink-2); min-height: 21px; }
+.note.ok { color: var(--ok); }
+.note.warn { color: var(--warn); }
+.note.bad { color: var(--bad); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
+
+/* Aristas */
+.edges-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.chips { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; max-height: 190px; overflow: auto; }
+.chips li { display: inline-flex; align-items: center; gap: 6px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 3px 4px 3px 8px; font: 500 13px var(--font-mono); }
+.chips li.empty { background: none; border: 0; color: var(--ink-3); font-family: var(--font-body); padding: 0; }
+.chips .w { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 6px; padding: 0 6px; color: var(--ink); }
+.chips .x { border: 0; background: none; cursor: pointer; color: var(--ink-3); width: 24px; height: 24px; border-radius: 6px; font-size: 16px; line-height: 1; }
+.chips .x:hover { background: var(--bad-soft); color: var(--bad); }
+.chips li:not(:has(.x)) { padding-right: 4px; }
+.nid { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 4px; border-radius: 6px; background: var(--accent-soft); color: var(--ink); font: 600 13px var(--font-mono); }
+.sep { color: var(--ink-3); }
+
+/* Grafo */
+.svg-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background-color: var(--paper); background-image: radial-gradient(var(--line) 1px, transparent 1px); background-size: 22px 22px; }
+#svg { display: block; width: 100%; min-width: 520px; height: auto; user-select: none; -webkit-user-select: none; }
+.node { cursor: pointer; touch-action: none; outline: none; }
+.node .body { fill: var(--n-idle); stroke: var(--n-stroke); stroke-width: 1.6; }
+.node text.id { font: 700 14px var(--font-mono); fill: var(--ink); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.node.st-frontier .body { fill: var(--n-frontier); }
+.node.st-visited .body { fill: var(--n-visited); }
+.node.st-current .body { fill: var(--n-current); }
+.node.st-neighbor .body { fill: var(--n-neighbor); }
+.node.st-path .body { fill: var(--n-path); }
+.node.st-current text.id, .node.st-neighbor text.id, .node.st-path text.id { fill: #10202B; }
+.node.sel .body { stroke-width: 3.2; }
+.node:focus-visible .body { stroke: var(--accent); stroke-width: 3.4; }
+.ring { fill: none; stroke: var(--accent); stroke-width: 2.6; pointer-events: none; }
+.ring.dash { stroke-dasharray: 5 4; }
+.edge line { stroke: var(--edge); stroke-width: 1.6; }
+.edge polygon { fill: var(--edge); }
+.edge.tree line { stroke: var(--edge-tree); stroke-width: 2.4; }
+.edge.tree polygon { fill: var(--edge-tree); }
+.edge.active line { stroke: var(--edge-active); stroke-width: 4; }
+.edge.active polygon { fill: var(--edge-active); }
+.edge.path line { stroke: var(--edge-path); stroke-width: 4; }
+.edge.path polygon { fill: var(--edge-path); }
+.edge.sel line { stroke: var(--edge-path); stroke-width: 6.5; }
+.edge.sel polygon { fill: var(--edge-path); }
+.wt rect { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1; }
+.wt text { font: 500 11px var(--font-mono); fill: var(--ink-2); text-anchor: middle; dominant-baseline: central; }
+.wt.active rect { stroke: var(--edge-active); stroke-width: 1.6; }
+.wt.active text { fill: var(--edge-active); font-weight: 600; }
+.wt.path rect, .wt.sel rect { stroke: var(--edge-path); stroke-width: 1.6; }
+.wt.path text, .wt.sel text { fill: var(--edge-path); font-weight: 600; }
+.nlabel { font: 500 11px var(--font-mono); fill: var(--ink); paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.nlabel .it { fill: var(--ink-3); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 13px; color: var(--ink-2); }
+.lg { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--n-stroke); background: var(--n-idle); display: inline-block; }
+.sw.st-current { background: var(--n-current); }
+.sw.st-neighbor { background: var(--n-neighbor); }
+.sw.st-frontier { background: var(--n-frontier); }
+.sw.st-visited { background: var(--n-visited); }
+.sw.st-path { background: var(--n-path); }
+.ring-sw { width: 14px; height: 14px; border-radius: 50%; border: 2.4px solid var(--accent); display: inline-block; }
+.ring-sw.dash { border-style: dashed; }
+.lg.mono { font-family: var(--font-mono); font-size: 12px; }
+
+/* Paso a paso */
+.step { display: flex; flex-direction: column; gap: 10px; }
+.step-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.iter { font: 600 12px var(--font-body); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+.badge { font: 600 12px var(--font-body); border-radius: 999px; padding: 2px 10px; background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line); }
+.badge.tone-info { background: var(--accent-soft); color: var(--ink); border-color: var(--accent); }
+.badge.tone-ok { background: var(--ok-soft); color: var(--ok); border-color: var(--ok); }
+.badge.tone-tie { background: var(--tie-soft); color: var(--tie); border-color: var(--tie); }
+.badge.tone-warn { background: var(--warn-soft); color: var(--warn); border-color: var(--warn); }
+.lead { font: 600 19px/1.3 var(--font-display); letter-spacing: -.005em; text-wrap: balance; }
+.step p { color: var(--ink-2); max-width: 66ch; }
+.step b { color: var(--ink); }
+.step code { font: 500 13px var(--font-mono); background: var(--surface-2); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; white-space: nowrap; color: var(--ink); }
+.calc { font: 500 13px/1.6 var(--font-mono); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; overflow-x: auto; }
+.calc b { color: var(--ink); }
+.calc .res { margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--line-strong); color: var(--ink); font-weight: 600; }
+@keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.step > * { animation: rise .22s ease-out both; }
+
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+.stat { background: var(--ok-soft); border: 1px solid var(--ok); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.stat-k { font: 600 12px var(--font-body); letter-spacing: .06em; text-transform: uppercase; color: var(--ok); }
+.stat-v { font: 700 34px/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
+.paths { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow: auto; }
+.path-btn { width: 100%; text-align: left; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; padding: 8px 10px; cursor: pointer; }
+.path-btn:hover { background: var(--surface-2); }
+.path-btn[aria-pressed="true"] { border-color: var(--edge-path); box-shadow: 0 0 0 1px var(--edge-path) inset; background: var(--ok-soft); }
+.p-idx { font: 600 12px var(--font-mono); color: var(--ink-3); min-width: 2.2ch; }
+.p-seq { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.p-sum { margin-left: auto; font: 500 12px var(--font-mono); color: var(--ink-2); }
+.none { color: var(--warn); font-weight: 500; margin-top: 8px; }
+
+.table-wrap { overflow-x: auto; margin-top: 10px; border: 1px solid var(--line); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+tr:last-child > * { border-bottom: 0; }
+thead th { font: 600 11px var(--font-body); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); background: var(--surface-2); }
+tbody th { font-weight: 500; }
+tbody th small { margin-left: 8px; color: var(--accent); font: 600 11px var(--font-body); }
+td { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+tr.r-current > * { background: color-mix(in srgb, var(--n-current) 28%, transparent); }
+tr.r-neighbor > * { background: color-mix(in srgb, var(--n-neighbor) 26%, transparent); }
+tr.r-path > * { background: color-mix(in srgb, var(--n-path) 24%, transparent); }
+tr.r-idle td { color: var(--ink-3); }
+@keyframes flash { from { background: var(--flash); } to { background: transparent; } }
+td.flash { animation: flash 1.2s ease-out; font-weight: 600; }
+.chip { display: inline-block; font: 500 11.5px var(--font-body); padding: 1px 8px; border-radius: 999px; border: 1px solid var(--n-stroke); background: var(--n-idle); color: var(--ink); }
+.chip.st-current { background: var(--n-current); color: #10202B; }
+.chip.st-neighbor { background: var(--n-neighbor); color: #10202B; }
+.chip.st-frontier { background: var(--n-frontier); }
+.chip.st-visited { background: var(--n-visited); }
+.chip.st-path { background: var(--n-path); color: #10202B; }
+.chip.st-idle { border-color: var(--line-strong); color: var(--ink-3); background: transparent; }
+
+/* Barra de reproducción */
+.player {
+  position: sticky; bottom: max(8px, env(safe-area-inset-bottom, 0px)); z-index: 5;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px;
+  padding: 10px 12px; box-shadow: 0 6px 24px rgba(18, 32, 43, .18);
+}
+.player .btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.scrub { flex: 1 1 220px; display: flex; align-items: center; gap: 12px; min-width: 0; }
+.scrub span { font: 500 13px var(--font-mono); color: var(--ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.kbd { color: var(--ink-3); font-size: 12.5px; }
+@media (max-width: 520px) { .trio { grid-template-columns: 1fr 1fr; } .trio .field:last-child { grid-column: 1 / -1; } .kbd { display: none; } }
+@media (prefers-reduced-motion: reduce) { .step > * { animation: none; } td.flash { animation: none; background: var(--flash); } }
+</style>
+
+<script id="logic">
+/* Lógica pura del algoritmo: sin acceso al DOM. */
+const MIN_N = 7, MAX_N = 16;
+const T = (x) => '<span class="nid">' + x + '</span>';
+const F = (x) => (x === Infinity ? '∞' : String(x));
+
+function rnd(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+function shuffle(a) {
+  const r = a.slice();
+  for (let i = r.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = r[i]; r[i] = r[j]; r[j] = t;
+  }
+  return r;
+}
+
+/* Grafo dirigido sin ciclos: todas las aristas siguen un orden oculto de los nodos. */
+function generarAleatorio(n) {
+  const order = shuffle(Array.from({ length: n }, (_, i) => i));
+  const edges = [];
+  for (let k = 0; k < n - 1; k++) edges.push({ u: order[k], v: order[k + 1], w: rnd(1, 5) });
+  const p = Math.max(0.16, 0.38 - 0.015 * n);
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 2; j < n; j++) {
+      if (Math.random() < p) edges.push({ u: order[i], v: order[j], w: rnd(1, 5) });
+    }
+  }
+  return { edges, order };
+}
+
+/* Camino dirigido de "from" a "to" (BFS) o null. */
+function rutaDe(edges, from, to) {
+  if (from === to) return [from];
+  const adj = new Map();
+  edges.forEach((e) => { if (!adj.has(e.u)) adj.set(e.u, []); adj.get(e.u).push(e.v); });
+  const prev = new Map([[from, null]]);
+  const q = [from];
+  while (q.length) {
+    const x = q.shift();
+    for (const y of (adj.get(x) || [])) {
+      if (prev.has(y)) continue;
+      prev.set(y, x);
+      if (y === to) {
+        const p = [to];
+        let c = to;
+        while (prev.get(c) !== null) { c = prev.get(c); p.push(c); }
+        return p.reverse();
+      }
+      q.push(y);
+    }
+  }
+  return null;
+}
+
+/* Agregar u -> v crea un ciclo si ya existe un camino de v a u. Devuelve el ciclo o null. */
+function formaCiclo(edges, u, v) {
+  const p = rutaDe(edges, v, u);
+  return p ? [u].concat(p) : null;
+}
+
+function caminosMinimos(preds, o, d, limite) {
+  const out = [];
+  const cur = [d];
+  (function rec(v) {
+    if (out.length >= limite) return;
+    if (v === o) { out.push(cur.slice().reverse()); return; }
+    for (const p of preds[v]) { cur.push(p); rec(p); cur.pop(); }
+  })(d);
+  out.sort((a, b) => { for (let i = 0; i < Math.min(a.length, b.length); i++) { if (a[i] !== b[i]) return a[i] - b[i]; } return a.length - b.length; });
+  return out;
+}
+
+/* Ejecuta Dijkstra y devuelve una lista de fotogramas (uno por decisión) más el resultado final. */
+function ejecutarDijkstra(n, edges, o, d) {
+  const adj = Array.from({ length: n }, () => []);
+  edges.forEach((e) => adj[e.u].push(e));
+  adj.forEach((l) => l.sort((a, b) => a.v - b.v));
+
+  const dist = Array(n).fill(Infinity);
+  const preds = Array.from({ length: n }, () => []);
+  const it = Array(n).fill(null);
+  const cnt = Array(n).fill(0);
+  const vis = Array(n).fill(false);
+  dist[o] = 0; it[o] = 0; cnt[o] = 1;
+
+  const frames = [];
+  const snap = (f) => {
+    f.dist = dist.slice();
+    f.preds = preds.map((p) => p.slice());
+    f.it = it.slice();
+    f.cnt = cnt.slice();
+    f.vis = vis.slice();
+    frames.push(f);
+  };
+
+  snap({
+    kind: 'init', iter: 0, cur: null, nb: null, changed: null,
+    badge: { t: 'Inicio', tone: 'info' },
+    lead: 'Se asigna distancia 0 al origen ' + T(o) + ' y ∞ a todos los demás nodos.',
+    body: [
+      'Todavía no se conoce ningún camino hacia los demás nodos, por eso empiezan en infinito. Ningún nodo está visitado y ninguno tiene previo.',
+      'Se busca el camino más corto de ' + T(o) + ' a ' + T(d) + '. El grafo es dirigido: solo se puede avanzar en el sentido de cada flecha.',
+      'En el grafo, cada nodo muestra <code>[distancia, previo]</code> y, entre paréntesis, la iteración en que se mejoró por última vez.'
+    ]
+  });
+
+  let k = 0;
+  let reached = false;
+  for (;;) {
+    let best = -1;
+    for (let i = 0; i < n; i++) {
+      if (!vis[i] && dist[i] < Infinity && (best < 0 || dist[i] < dist[best])) best = i;
+    }
+    if (best < 0) {
+      snap({
+        kind: 'stop', iter: k, cur: null, nb: null, changed: null,
+        badge: { t: 'Fin', tone: 'warn' },
+        lead: 'No quedan nodos alcanzables sin visitar.',
+        body: [
+          'Todos los nodos restantes tienen distancia ∞: no se puede llegar a ellos desde ' + T(o) + ' siguiendo el sentido de las flechas.',
+          T(d) + ' no fue alcanzado, así que no existe camino de ' + T(o) + ' a ' + T(d) + '.'
+        ]
+      });
+      break;
+    }
+    k++;
+    const cands = [];
+    for (let i = 0; i < n; i++) if (!vis[i] && dist[i] < Infinity) cands.push(i);
+    const ties = cands.filter((i) => dist[i] === dist[best]);
+    vis[best] = true;
+    const outs = adj[best];
+
+    const body = [];
+    body.push('Candidatos no visitados con distancia conocida: ' + cands.map((c) => T(c) + ' = ' + F(dist[c])).join(' · ') + '. Los nodos con ∞ todavía no son alcanzables.');
+    if (ties.length > 1) body.push('Hay empate entre ' + ties.map(T).join(', ') + '. Se toma el de número menor.');
+    body.push('Queda marcado como visitado y su distancia ya es definitiva: como todos los pesos son positivos, ningún camino por un nodo más lejano puede mejorarla.');
+    if (best === d) {
+      body.push(T(best) + ' es el destino, así que el algoritmo se detiene aquí.');
+    } else if (outs.length) {
+      body.push('Ahora se relajan sus aristas salientes: ' + outs.map((e) => '<code>' + best + ' → ' + e.v + ' (' + e.w + ')</code>').join(' ') + '.');
+    }
+    snap({
+      kind: 'select', iter: k, cur: best, nb: null, changed: null,
+      badge: { t: 'Selecciona nodo', tone: 'info' },
+      lead: 'Se elige ' + T(best) + ', el nodo no visitado con menor distancia (' + dist[best] + ').',
+      body: body
+    });
+    if (best === d) { reached = true; break; }
+
+    if (!outs.length) {
+      snap({
+        kind: 'noedges', iter: k, cur: best, nb: null, changed: null,
+        badge: { t: 'Sin salidas', tone: 'none' },
+        lead: T(best) + ' no tiene aristas salientes.',
+        body: ['No hay nada que relajar desde este nodo. Se pasa a la siguiente iteración.']
+      });
+    }
+
+    for (const e of outs) {
+      if (vis[e.v]) {
+        snap({
+          kind: 'skip', iter: k, cur: best, nb: e.v, changed: null,
+          badge: { t: 'Omite', tone: 'none' },
+          lead: 'La arista ' + T(best) + ' → ' + T(e.v) + ' (peso ' + e.w + ') lleva a un nodo ya visitado.',
+          body: ['La distancia de ' + T(e.v) + ' (' + dist[e.v] + ') ya es definitiva, por eso esta arista no se evalúa.']
+        });
+        continue;
+      }
+      const nd = dist[best] + e.w;
+      const old = dist[e.v];
+      const oldPreds = preds[e.v].slice();
+      let outcome;
+      if (nd < old) {
+        outcome = old === Infinity ? 'first' : 'better';
+        preds[e.v] = [best]; cnt[e.v] = cnt[best]; dist[e.v] = nd; it[e.v] = k;
+      } else if (nd === old) {
+        outcome = 'tie';
+        preds[e.v].push(best); cnt[e.v] += cnt[best];
+      } else {
+        outcome = 'worse';
+      }
+      const rel = nd < old ? '<' : nd === old ? '=' : '>';
+      const verdict = { first: 'mejora', better: 'mejora', tie: 'empate', worse: 'no mejora' }[outcome];
+      const calc = [
+        'Por ' + best + ': d[' + best + '] + peso = ' + dist[best] + ' + ' + e.w + ' = <b>' + nd + '</b>',
+        'Conocido: d[' + e.v + '] = <b>' + F(old) + '</b>',
+        '<div class="res">' + nd + ' ' + rel + ' ' + F(old) + ' → ' + verdict + '</div>'
+      ];
+      let text, badge;
+      if (outcome === 'first') {
+        text = 'Como ' + nd + ' < ∞, es el primer camino que se encuentra hacia ' + T(e.v) + '. Se guarda d[' + e.v + '] = ' + nd + ', previo = ' + best + ' e iteración ' + k + '.';
+        badge = { t: 'Actualiza', tone: 'ok' };
+      } else if (outcome === 'better') {
+        text = 'Como ' + nd + ' < ' + old + ', este camino es más corto que el conocido. d[' + e.v + '] baja de ' + old + ' a ' + nd + ', el previo cambia de ' + oldPreds.join(', ') + ' a ' + best + ' y se descartan los caminos anteriores.';
+        badge = { t: 'Actualiza', tone: 'ok' };
+      } else if (outcome === 'tie') {
+        text = 'Como ' + nd + ' = ' + old + ', este camino es igual de corto. La distancia no cambia, pero ' + T(best) + ' se agrega como previo alternativo. Ahora hay ' + cnt[e.v] + ' caminos mínimos conocidos hacia ' + T(e.v) + '.';
+        badge = { t: 'Empate', tone: 'tie' };
+      } else {
+        text = 'Como ' + nd + ' > ' + old + ', este camino no mejora. d[' + e.v + '] se mantiene en ' + old + '.';
+        badge = { t: 'Sin cambio', tone: 'none' };
+      }
+      snap({
+        kind: 'edge', iter: k, cur: best, nb: e.v, changed: outcome === 'worse' ? null : e.v,
+        badge: badge,
+        lead: 'Se evalúa la arista ' + T(best) + ' → ' + T(e.v) + ' con peso ' + e.w + '.',
+        calc: calc,
+        body: [text]
+      });
+    }
+  }
+
+  let res;
+  if (reached) {
+    const paths = caminosMinimos(preds, o, d, 300);
+    res = { found: true, o: o, d: d, dist: dist[d], count: cnt[d], paths: paths, truncated: paths.length < cnt[d] };
+    const body = [
+      'Se reconstruyeron los caminos yendo desde ' + T(d) + ' hacia atrás, por los previos de cada nodo.'
+    ];
+    if (cnt[d] > 1) body.push('Cuando un nodo tiene varios previos, cada uno abre caminos distintos con el mismo peso total.');
+    snap({
+      kind: 'result', iter: k, cur: null, nb: null, changed: null, final: true, res: res,
+      badge: { t: 'Listo', tone: 'ok' },
+      lead: 'La distancia mínima de ' + T(o) + ' a ' + T(d) + ' es <b>' + dist[d] + '</b>, con ' + cnt[d] + (cnt[d] === 1 ? ' camino mínimo.' : ' caminos mínimos.'),
+      body: body
+    });
+  } else {
+    res = { found: false, o: o, d: d };
+    snap({
+      kind: 'result', iter: k, cur: null, nb: null, changed: null, final: true, res: res,
+      badge: { t: 'Sin camino', tone: 'warn' },
+      lead: 'No existe camino de ' + T(o) + ' a ' + T(d) + '.',
+      body: ['Dijkstra visitó todos los nodos alcanzables desde ' + T(o) + ' y ' + T(d) + ' no estaba entre ellos.']
+    });
+  }
+  return { frames: frames, res: res, totalIter: k };
+}
+</script>
+
+<div class="app">
+  <header class="top">
+    <div>
+      <h1>Dijkstra paso a paso</h1>
+      <p class="lede">Construye un grafo dirigido sin ciclos, elige un origen y un destino, y avanza o retrocede por cada decisión del algoritmo.</p>
+    </div>
+    <ol class="steps" id="steps" aria-label="Etapas">
+      <li><button type="button" data-stage="1"><span class="num">1</span>Grafo</button></li>
+      <li><button type="button" data-stage="2"><span class="num">2</span>Origen y destino</button></li>
+      <li><button type="button" data-stage="3"><span class="num">3</span>Algoritmo</button></li>
+    </ol>
+  </header>
+
+  <main class="grid">
+    <section class="card graph-card" aria-label="Grafo">
+      <div class="card-head">
+        <h2 id="graphTitle">Grafo dirigido</h2>
+        <span class="meta" id="graphMeta"></span>
+      </div>
+      <p class="hint" id="graphHint"></p>
+      <div class="svg-scroll"><svg id="svg" viewBox="0 0 720 540" role="img" aria-label="Grafo dirigido sin ciclos"></svg></div>
+      <div class="legend" id="legend" hidden>
+        <span class="lg"><i class="sw st-current"></i>Nodo actual</span>
+        <span class="lg"><i class="sw st-neighbor"></i>Vecino evaluado</span>
+        <span class="lg"><i class="sw st-frontier"></i>Candidato</span>
+        <span class="lg"><i class="sw st-visited"></i>Visitado</span>
+        <span class="lg"><i class="sw"></i>Sin alcanzar</span>
+        <span class="lg"><i class="sw st-path"></i>Camino mínimo</span>
+        <span class="lg"><i class="ring-sw"></i>Origen</span>
+        <span class="lg"><i class="ring-sw dash"></i>Destino</span>
+        <span class="lg mono">[distancia, previo] (iteración)</span>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button type="button" class="btn" id="btnReset">Acomodar nodos en círculo</button>
+      </div>
+    </section>
+
+    <div class="side">
+      <!-- Etapa 1 -->
+      <div class="panel" id="panel1">
+        <div class="card">
+          <h2>Construir el grafo</h2>
+          <div class="stack">
+            <div class="field">
+              <label for="nRange">Número de nodos</label>
+              <div class="range-row">
+                <input type="range" id="nRange" min="7" max="16" step="1" value="9">
+                <output id="nOut" for="nRange">9</output>
+              </div>
+              <p class="hint">De 7 a 16 nodos, numerados desde 0.</p>
+            </div>
+            <div class="field">
+              <span class="label" id="modeLabel">Generación</span>
+              <div class="seg" role="group" aria-labelledby="modeLabel">
+                <button type="button" id="modeAuto" aria-pressed="true">Aleatoria</button>
+                <button type="button" id="modeManual" aria-pressed="false">Manual</button>
+              </div>
+            </div>
+            <div id="autoBox" class="field">
+              <div class="row"><button type="button" class="btn" id="btnRegen">Generar otro grafo</button></div>
+              <p class="hint">El grafo siempre es dirigido y sin ciclos. Los pesos van de 1 a 5.</p>
+            </div>
+            <form id="manualBox" class="field" autocomplete="off" hidden>
+              <div class="trio">
+                <div class="field"><label for="mFrom">Desde</label><select id="mFrom"></select></div>
+                <div class="field"><label for="mTo">Hasta</label><select id="mTo"></select></div>
+                <div class="field"><label for="mW">Peso</label><input id="mW" type="number" min="1" max="99" step="1" value="5" inputmode="numeric"></div>
+              </div>
+              <div class="row">
+                <button type="submit" class="btn primary">Agregar arista</button>
+                <button type="button" class="btn" id="btnClear">Quitar todas</button>
+              </div>
+              <p class="note" id="manualMsg" role="status" aria-live="polite">Haz clic en dos nodos del grafo o usa los selectores. Los ciclos se rechazan.</p>
+            </form>
+            <div>
+              <div class="edges-head">
+                <span class="label">Aristas (<span id="edgeCount">0</span>)</span>
+                <span class="hint">origen → destino y peso</span>
+              </div>
+              <ul class="chips" id="edgeList"></ul>
+            </div>
+            <div class="actions">
+              <span class="note" id="s1note"></span>
+              <button type="button" class="btn primary" id="toStage2">Elegir origen y destino →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Etapa 2 -->
+      <div class="panel" id="panel2" hidden>
+        <div class="card">
+          <h2>Origen y destino</h2>
+          <div class="stack">
+            <p class="hint">Haz clic en un nodo del grafo para elegir el origen y en otro para elegir el destino. También puedes usar los selectores.</p>
+            <div class="pair">
+              <div class="field"><label for="selOrigin">Origen</label><select id="selOrigin"></select></div>
+              <span class="between" aria-hidden="true">→</span>
+              <div class="field"><label for="selDest">Destino</label><select id="selDest"></select></div>
+            </div>
+            <p class="note" id="reachMsg" role="status" aria-live="polite"></p>
+            <div class="actions">
+              <button type="button" class="btn" id="backTo1">← Editar grafo</button>
+              <button type="button" class="btn primary" id="toStage3">Ejecutar Dijkstra →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Etapa 3 -->
+      <div class="panel" id="panel3" hidden>
+        <div class="card step" id="stepCard" aria-live="polite"></div>
+        <div class="card" id="resultCard" hidden></div>
+        <div class="card" id="tableCard">
+          <h2>Estado de los nodos</h2>
+          <p class="hint">Distancia mínima conocida, previo en el camino, iteración de la última mejora y cantidad de caminos mínimos hacia cada nodo.</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">Nodo</th><th scope="col">Dist.</th><th scope="col">Previo</th><th scope="col">Iter.</th><th scope="col">Caminos</th><th scope="col">Estado</th></tr></thead>
+              <tbody id="tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn" id="backTo2">← Cambiar origen y destino</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div class="player" id="player" hidden>
+    <div class="btns">
+      <button type="button" class="btn icon" id="pFirst" aria-label="Ir al inicio"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2h2v12H3zM14 2v12L6 8z"/></svg></button>
+      <button type="button" class="btn" id="pPrev"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11 2v12L3 8z"/></svg>Anterior</button>
+      <button type="button" class="btn primary" id="pNext">Siguiente<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2v12l8-6z"/></svg></button>
+      <button type="button" class="btn icon" id="pLast" aria-label="Ir al final"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11 2h2v12h-2zM2 2l8 6-8 6z"/></svg></button>
+      <button type="button" class="btn" id="pPlay"><svg id="pPlayIcon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2v12l10-6z"/></svg><span id="pPlayTxt">Reproducir</span></button>
+    </div>
+    <div class="scrub">
+      <input type="range" id="pRange" min="0" max="0" value="0" step="1" aria-label="Paso del algoritmo">
+      <span id="pCount">Paso 1 de 1</span>
+    </div>
+    <span class="kbd">Teclas ← y →</span>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  const W = 720, H = 540, CX = 360, CY = 268, R = 19;
+  const $ = (s, r) => (r || document).querySelector(s);
+  const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+  const svg = $('#svg');
+  const LABEL = { current: 'Actual', neighbor: 'Evaluando', visited: 'Visitado', frontier: 'Candidato', idle: 'Sin alcanzar', path: 'Camino mínimo' };
+
+  const state = {
+    n: 9, mode: 'auto', edges: [], order: [], pos: [],
+    stage: 1, origin: null, dest: null,
+    frames: [], idx: 0, totalIter: 0, playing: false, timer: null, selPath: null
+  };
+
+  /* ---------- Utilidades ---------- */
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const identity = (n) => Array.from({ length: n }, (_, i) => i);
+  function circlePos(order) {
+    const n = order.length, pos = new Array(n);
+    order.forEach((node, k) => {
+      const a = -Math.PI / 2 + (2 * Math.PI * k) / n;
+      pos[node] = { x: CX + 255 * Math.cos(a), y: CY + 195 * Math.sin(a) };
+    });
+    return pos;
+  }
+  function weightMap() { const m = new Map(); state.edges.forEach((e) => m.set(e.u + ',' + e.v, e.w)); return m; }
+  function canGo(s) {
+    if (s === 1) return true;
+    if (state.edges.length === 0) return false;
+    if (s === 2) return true;
+    return state.origin != null && state.dest != null && state.origin !== state.dest;
+  }
+
+  /* ---------- Estado del grafo ---------- */
+  function stopPlay() {
+    state.playing = false;
+    if (state.timer) { clearInterval(state.timer); state.timer = null; }
+  }
+  function invalidate(resetSel) {
+    stopPlay();
+    state.frames = []; state.idx = 0; state.selPath = null; state.totalIter = 0;
+    if (resetSel) { state.origin = null; state.dest = null; }
+  }
+  function newAuto() {
+    const g = generarAleatorio(state.n);
+    state.edges = g.edges; state.order = g.order; state.pos = circlePos(g.order);
+    invalidate(true);
+  }
+  function setManualEmpty() {
+    state.edges = []; state.order = identity(state.n); state.pos = circlePos(state.order);
+    invalidate(true);
+  }
+  function setMode(m) {
+    if (m === state.mode) return;
+    state.mode = m;
+    if (m === 'auto') newAuto(); else { setManualEmpty(); say('Haz clic en dos nodos del grafo o usa los selectores. Los ciclos se rechazan.', ''); }
+    renderAll();
+  }
+  function setN(v) {
+    state.n = v;
+    if (state.mode === 'auto') newAuto();
+    else {
+      state.edges = state.edges.filter((e) => e.u < v && e.v < v);
+      state.order = identity(v); state.pos = circlePos(state.order);
+      invalidate(true);
+    }
+    fillSelects();
+    renderAll();
+  }
+
+  function optionsHtml(placeholder) {
+    let h = '<option value="">' + placeholder + '</option>';
+    for (let i = 0; i < state.n; i++) h += '<option value="' + i + '">' + i + '</option>';
+    return h;
+  }
+  function fillSelects() {
+    $('#mFrom').innerHTML = optionsHtml('Nodo');
+    $('#mTo').innerHTML = optionsHtml('Nodo');
+    $('#selOrigin').innerHTML = optionsHtml('Elegir');
+    $('#selDest').innerHTML = optionsHtml('Elegir');
+  }
+
+  /* ---------- Navegación entre etapas ---------- */
+  function goStage(s) {
+    if (!canGo(s)) return;
+    stopPlay();
+    if (s === 3 && !state.frames.length) {
+      const r = ejecutarDijkstra(state.n, state.edges, state.origin, state.dest);
+      state.frames = r.frames; state.totalIter = r.totalIter; state.idx = 0; state.selPath = null;
+    }
+    state.stage = s;
+    renderAll();
+  }
+
+  /* ---------- Dibujo del grafo ---------- */
+  function pathSets(f) {
+    const out = { nodes: new Set(), edges: new Set(), selNodes: new Set(), selEdges: new Set() };
+    if (!f || f.kind !== 'result' || !f.res.found) return out;
+    f.res.paths.forEach((p) => p.forEach((x, i) => { out.nodes.add(x); if (i) out.edges.add(p[i - 1] + ',' + x); }));
+    if (state.selPath != null && f.res.paths[state.selPath]) {
+      const p = f.res.paths[state.selPath];
+      p.forEach((x, i) => { out.selNodes.add(x); if (i) out.selEdges.add(p[i - 1] + ',' + x); });
+    }
+    return out;
+  }
+  function nodeState(f, i, ps) {
+    if (!f) return 'idle';
+    if (ps.nodes.has(i)) return 'path';
+    if (i === f.cur) return 'current';
+    if (i === f.nb) return 'neighbor';
+    if (f.vis[i]) return 'visited';
+    if (f.dist[i] < Infinity) return 'frontier';
+    return 'idle';
+  }
+
+  function renderSvg() {
+    const pos = state.pos;
+    const f = state.stage === 3 && state.frames.length ? state.frames[state.idx] : null;
+    const ps = pathSets(f);
+    const tree = new Set();
+    if (f) for (let v = 0; v < state.n; v++) f.preds[v].forEach((u) => tree.add(u + ',' + v));
+
+    const rank = { '': 0, tree: 1, active: 2, path: 3, sel: 4 };
+    const items = state.edges.map((e) => {
+      const key = e.u + ',' + e.v;
+      let cls = '';
+      if (ps.selEdges.has(key)) cls = 'sel';
+      else if (ps.edges.has(key)) cls = 'path';
+      else if (f && f.cur === e.u && f.nb === e.v && (f.kind === 'edge' || f.kind === 'skip')) cls = 'active';
+      else if (tree.has(key)) cls = 'tree';
+      return { e: e, cls: cls };
+    }).sort((a, b) => rank[a.cls] - rank[b.cls]);
+
+    let edgeSvg = '', wtSvg = '';
+    items.forEach((it) => {
+      const e = it.e, a = pos[e.u], b = pos[e.v];
+      let dx = b.x - a.x, dy = b.y - a.y;
+      const L = Math.hypot(dx, dy) || 1;
+      dx /= L; dy /= L;
+      const x1 = a.x + dx * R, y1 = a.y + dy * R;
+      const x2 = b.x - dx * (R + 1.5), y2 = b.y - dy * (R + 1.5);
+      const bx = x2 - dx * 10, by = y2 - dy * 10;
+      const nx = -dy, ny = dx;
+      const pts = x2.toFixed(1) + ',' + y2.toFixed(1) + ' ' + (bx + nx * 5).toFixed(1) + ',' + (by + ny * 5).toFixed(1) + ' ' + (bx - nx * 5).toFixed(1) + ',' + (by - ny * 5).toFixed(1);
+      edgeSvg += '<g class="edge ' + it.cls + '"><line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + bx.toFixed(1) + '" y2="' + by.toFixed(1) + '"/><polygon points="' + pts + '"/></g>';
+      const t = 0.5 + (((e.u * 5 + e.v * 3) % 5) - 2) * 0.06;
+      const mx = x1 + (x2 - x1) * t, my = y1 + (y2 - y1) * t;
+      const wd = 10 + String(e.w).length * 7;
+      wtSvg += '<g class="wt ' + it.cls + '"><rect x="' + (mx - wd / 2).toFixed(1) + '" y="' + (my - 9).toFixed(1) + '" width="' + wd + '" height="18" rx="6"/><text x="' + mx.toFixed(1) + '" y="' + (my + 0.5).toFixed(1) + '">' + e.w + '</text></g>';
+    });
+
+    let nodeSvg = '', labelSvg = '';
+    for (let i = 0; i < state.n; i++) {
+      const p = pos[i];
+      const st = nodeState(f, i, ps);
+      const isSel = ps.selNodes.has(i);
+      let ring = '';
+      if (state.stage >= 2 && i === state.origin) ring += '<circle class="ring" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + (R + 5) + '"/>';
+      if (state.stage >= 2 && i === state.dest) ring += '<circle class="ring dash" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + (R + 5) + '"/>';
+      const role = i === state.origin ? ', origen' : i === state.dest ? ', destino' : '';
+      nodeSvg += '<g class="node st-' + st + (isSel ? ' sel' : '') + '" data-id="' + i + '" tabindex="0" role="button" aria-label="Nodo ' + i + role + '">' + ring +
+        '<circle class="body" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + R + '"/><text class="id" x="' + p.x.toFixed(1) + '" y="' + (p.y + 0.5).toFixed(1) + '">' + i + '</text></g>';
+
+      if (f && f.dist[i] < Infinity) {
+        const prev = f.preds[i].length ? f.preds[i].join('/') : '–';
+        const txt = '[' + f.dist[i] + ', ' + prev + ']';
+        const itx = ' (' + (f.it[i] == null ? 0 : f.it[i]) + ')';
+        const hw = ((txt + itx).length * 6.6) / 2 + 2;
+        let ox = p.x - CX, oy = p.y - CY;
+        const ol = Math.hypot(ox, oy);
+        if (ol < 20) { ox = 0; oy = 1; } else { ox /= ol; oy /= ol; }
+        const lx = clamp(p.x + ox * (R + 8 + hw * Math.abs(ox)), hw + 2, W - hw - 2);
+        const ly = clamp(p.y + oy * (R + 8 + 9 * Math.abs(oy)) + (ox !== 0 && Math.abs(oy) < 0.3 ? 0 : 0), 10, H - 10);
+        labelSvg += '<text class="nlabel" x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '">' + txt + '<tspan class="it">' + itx + '</tspan></text>';
+      }
+    }
+    svg.innerHTML = edgeSvg + wtSvg + nodeSvg + labelSvg;
+  }
+
+  /* ---------- Etapa 1 ---------- */
+  function say(text, tone) {
+    const el = $('#manualMsg');
+    el.textContent = text;
+    el.className = 'note' + (tone ? ' ' + tone : '');
+  }
+  function renderEdgeList() {
+    const list = state.edges.slice().sort((a, b) => a.u - b.u || a.v - b.v);
+    const manual = state.mode === 'manual';
+    $('#edgeCount').textContent = list.length;
+    $('#edgeList').innerHTML = list.length
+      ? list.map((e) => '<li><span class="nid">' + e.u + '</span><span class="sep">→</span><span class="nid">' + e.v + '</span><span class="w" title="Peso">' + e.w + '</span>' +
+        (manual ? '<button type="button" class="x" data-u="' + e.u + '" data-v="' + e.v + '" aria-label="Quitar arista ' + e.u + ' a ' + e.v + '">×</button>' : '') + '</li>').join('')
+      : '<li class="empty">Todavía no hay aristas.</li>';
+  }
+  function renderStage1() {
+    $('#nRange').value = state.n;
+    $('#nOut').textContent = state.n;
+    $('#modeAuto').setAttribute('aria-pressed', String(state.mode === 'auto'));
+    $('#modeManual').setAttribute('aria-pressed', String(state.mode === 'manual'));
+    $('#autoBox').hidden = state.mode !== 'auto';
+    $('#manualBox').hidden = state.mode !== 'manual';
+    renderEdgeList();
+    $('#toStage2').disabled = state.edges.length === 0;
+    $('#s1note').textContent = state.edges.length === 0 ? 'Agrega al menos una arista.' : '';
+  }
+
+  function addEdge(u, v, w) {
+    if (Number.isNaN(u) || Number.isNaN(v)) { say('Elige el nodo de origen y el de destino de la arista.', 'bad'); return; }
+    if (u === v) { say('Una arista no puede unir un nodo consigo mismo.', 'bad'); return; }
+    if (!Number.isInteger(w) || w < 1 || w > 99) { say('El peso debe ser un entero entre 1 y 99.', 'bad'); return; }
+    const existing = state.edges.find((e) => e.u === u && e.v === v);
+    if (existing) {
+      existing.w = w;
+      say('La arista ' + u + ' → ' + v + ' ya existía. Se actualizó su peso a ' + w + '.', 'ok');
+    } else {
+      const cyc = formaCiclo(state.edges, u, v);
+      if (cyc) { say('No se puede agregar ' + u + ' → ' + v + ' porque formaría el ciclo ' + cyc.join(' → ') + '.', 'bad'); return; }
+      state.edges.push({ u: u, v: v, w: w });
+      say('Arista ' + u + ' → ' + v + ' con peso ' + w + ' agregada.', 'ok');
+    }
+    $('#mFrom').value = ''; $('#mTo').value = '';
+    invalidate(false);
+    renderAll();
+  }
+
+  /* ---------- Etapa 2 ---------- */
+  function renderReach() {
+    const el = $('#reachMsg');
+    const o = state.origin, d = state.dest;
+    $('#selOrigin').value = o == null ? '' : String(o);
+    $('#selDest').value = d == null ? '' : String(d);
+    $('#toStage3').disabled = !canGo(3);
+    if (o == null) { el.className = 'note'; el.innerHTML = 'Elige primero el origen.'; return; }
+    if (d == null) { el.className = 'note'; el.innerHTML = 'Origen: ' + T(o) + '. Ahora elige el destino.'; return; }
+    const p = rutaDe(state.edges, o, d);
+    if (p) {
+      el.className = 'note ok';
+      el.innerHTML = 'Hay al menos un camino de ' + T(o) + ' a ' + T(d) + ', por ejemplo ' + p.map((x) => T(x)).join(' <span class="sep">→</span> ') + '. Dijkstra buscará el más corto.';
+    } else {
+      el.className = 'note warn';
+      el.innerHTML = 'No hay ningún camino dirigido de ' + T(o) + ' a ' + T(d) + '. Puedes ejecutar el algoritmo igual para ver cómo termina.';
+    }
+  }
+  function setPair(o, d) {
+    state.origin = o; state.dest = d;
+    state.frames = []; state.idx = 0; state.selPath = null; stopPlay();
+    renderAll();
+  }
+
+  /* ---------- Etapa 3 ---------- */
+  function renderStep() {
+    const f = state.frames[state.idx];
+    if (!f) return;
+    let iterTxt;
+    if (f.kind === 'init') iterTxt = 'Inicio';
+    else if (f.kind === 'result') iterTxt = 'Resultado';
+    else if (f.kind === 'stop') iterTxt = 'Fin de la búsqueda';
+    else iterTxt = 'Iteración ' + f.iter + ' de ' + state.totalIter;
+    $('#stepCard').innerHTML =
+      '<div class="step-meta"><span class="iter">' + iterTxt + '</span><span class="badge tone-' + f.badge.tone + '">' + f.badge.t + '</span></div>' +
+      '<p class="lead">' + f.lead + '</p>' +
+      (f.calc ? '<div class="calc">' + f.calc.map((l) => l.indexOf('<div') === 0 ? l : '<div>' + l + '</div>').join('') + '</div>' : '') +
+      f.body.map((p) => '<p>' + p + '</p>').join('');
+  }
+
+  function renderResult() {
+    const f = state.frames[state.idx];
+    const card = $('#resultCard');
+    if (!f || f.kind !== 'result') { card.hidden = true; return; }
+    card.hidden = false;
+    const r = f.res;
+    if (!r.found) {
+      card.innerHTML = '<h2>Resultado</h2><p class="none">No existe un camino dirigido de ' + T(r.o) + ' a ' + T(r.d) + '.</p>';
+      return;
+    }
+    const wm = weightMap();
+    const rows = r.paths.map((p, i) => {
+      const ws = [];
+      for (let j = 1; j < p.length; j++) ws.push(wm.get(p[j - 1] + ',' + p[j]));
+      return '<li><button type="button" class="path-btn" data-p="' + i + '" aria-pressed="' + (state.selPath === i) + '">' +
+        '<span class="p-idx">' + (i + 1) + '</span><span class="p-seq">' + p.map((x) => T(x)).join('<span class="sep">→</span>') + '</span>' +
+        '<span class="p-sum">' + ws.join(' + ') + ' = ' + r.dist + '</span></button></li>';
+    }).join('');
+    card.innerHTML =
+      '<h2>Resultado</h2>' +
+      '<div class="stats"><div class="stat"><span class="stat-k">Distancia mínima</span><span class="stat-v">' + r.dist + '</span></div>' +
+      '<div class="stat"><span class="stat-k">' + (r.count === 1 ? 'Camino mínimo' : 'Caminos mínimos') + '</span><span class="stat-v">' + r.count + '</span></div></div>' +
+      '<p class="hint">' + (r.count === 1 ? 'El camino está resaltado en verde sobre el grafo.' : 'Todos están resaltados en verde. Elige uno para verlo más grueso en el grafo.') +
+      (r.truncated ? ' Se muestran los primeros ' + r.paths.length + ' de ' + r.count + '.' : '') + '</p>' +
+      '<ol class="paths">' + rows + '</ol>';
+  }
+
+  function renderTable() {
+    const f = state.frames[state.idx];
+    if (!f) return;
+    const ps = pathSets(f);
+    let h = '';
+    for (let i = 0; i < state.n; i++) {
+      const st = nodeState(f, i, ps);
+      const fl = f.changed === i ? ' flash' : '';
+      const tag = i === state.origin ? '<small>origen</small>' : i === state.dest ? '<small>destino</small>' : '';
+      const finite = f.dist[i] < Infinity;
+      h += '<tr class="r-' + st + '"><th scope="row"><span class="nid">' + i + '</span>' + tag + '</th>' +
+        '<td class="' + fl.trim() + '">' + F(f.dist[i]) + '</td>' +
+        '<td class="' + fl.trim() + '">' + (f.preds[i].length ? f.preds[i].join(', ') : '–') + '</td>' +
+        '<td>' + (f.it[i] == null ? '–' : f.it[i]) + '</td>' +
+        '<td class="' + fl.trim() + '">' + (finite ? f.cnt[i] : '–') + '</td>' +
+        '<td><span class="chip st-' + st + '">' + LABEL[st] + '</span></td></tr>';
+    }
+    $('#tbody').innerHTML = h;
+  }
+
+  function renderPlayer() {
+    const total = state.frames.length;
+    const last = Math.max(0, total - 1);
+    const r = $('#pRange');
+    r.max = last; r.value = state.idx;
+    $('#pCount').textContent = 'Paso ' + (state.idx + 1) + ' de ' + total;
+    $('#pFirst').disabled = $('#pPrev').disabled = state.idx <= 0;
+    $('#pLast').disabled = $('#pNext').disabled = state.idx >= last;
+    $('#pPlay').disabled = state.idx >= last && !state.playing;
+    $('#pPlayTxt').textContent = state.playing ? 'Pausar' : 'Reproducir';
+    $('#pPlayIcon').innerHTML = state.playing ? '<path d="M3 2h4v12H3zM9 2h4v12H9z"/>' : '<path d="M4 2v12l10-6z"/>';
+  }
+
+  function setIdx(i) {
+    const last = state.frames.length - 1;
+    const nx = clamp(i, 0, last);
+    if (nx !== state.idx) state.selPath = null;
+    state.idx = nx;
+    if (state.idx >= last) stopPlay();
+    renderStage3();
+    renderSvg();
+  }
+  function renderStage3() { renderStep(); renderResult(); renderTable(); renderPlayer(); }
+  function togglePlay() {
+    if (state.playing) { stopPlay(); renderPlayer(); return; }
+    if (state.idx >= state.frames.length - 1) return;
+    state.playing = true;
+    state.timer = setInterval(() => setIdx(state.idx + 1), 1500);
+    renderPlayer();
+  }
+
+  /* ---------- Render general ---------- */
+  function renderStepper() {
+    $$('#steps button').forEach((b) => {
+      const s = Number(b.dataset.stage);
+      b.disabled = !canGo(s);
+      b.setAttribute('aria-current', s === state.stage ? 'step' : 'false');
+      b.classList.toggle('done', s < state.stage);
+    });
+  }
+  function renderMeta() {
+    const titles = { 1: 'Grafo dirigido sin ciclos', 2: 'Elige origen y destino', 3: 'Ejecución del algoritmo' };
+    $('#graphTitle').textContent = titles[state.stage];
+    $('#graphMeta').textContent = state.n + ' nodos · ' + state.edges.length + ' aristas';
+    const hints = {
+      1: state.mode === 'manual' ? 'Haz clic en dos nodos para rellenar Desde y Hasta. Arrastra un nodo para moverlo.' : 'Arrastra los nodos para ordenarlos a tu gusto. El número sobre cada arista es su peso.',
+      2: 'Haz clic en el nodo de origen y luego en el de destino.',
+      3: 'Usa Anterior y Siguiente para recorrer cada decisión del algoritmo.'
+    };
+    $('#graphHint').textContent = hints[state.stage];
+    $('#legend').hidden = state.stage !== 3;
+    $('#player').hidden = state.stage !== 3;
+    $$('.panel').forEach((p) => { p.hidden = p.id !== 'panel' + state.stage; });
+  }
+  function renderAll() {
+    renderStepper();
+    renderMeta();
+    renderSvg();
+    if (state.stage === 1) renderStage1();
+    if (state.stage === 2) renderReach();
+    if (state.stage === 3) renderStage3();
+  }
+
+  /* ---------- Interacción con los nodos ---------- */
+  function nodeClick(id) {
+    if (state.stage === 1 && state.mode === 'manual') {
+      const from = $('#mFrom'), to = $('#mTo');
+      if (from.value === '') { from.value = String(id); say('Desde ' + id + '. Ahora haz clic en el nodo de destino.', ''); }
+      else if (from.value === String(id)) { from.value = ''; to.value = ''; say('Selección borrada.', ''); }
+      else { to.value = String(id); say('Arista ' + from.value + ' → ' + id + '. Ajusta el peso y pulsa Agregar arista.', ''); }
+    } else if (state.stage === 2) {
+      if (state.origin == null) setPair(id, state.dest === id ? null : state.dest);
+      else if (state.dest == null) {
+        if (id === state.origin) { const el = $('#reachMsg'); el.className = 'note bad'; el.textContent = 'El destino debe ser distinto del origen.'; return; }
+        setPair(state.origin, id);
+      } else setPair(id, null);
+    }
+  }
+
+  function svgPoint(e) {
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX; pt.y = e.clientY;
+    return pt.matrixTransform(svg.getScreenCTM().inverse());
+  }
+  let drag = null;
+  function onMove(e) {
+    if (!drag) return;
+    if (!drag.moved && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 6) return;
+    drag.moved = true;
+    const p = svgPoint(e);
+    state.pos[drag.id] = { x: clamp(p.x + drag.dx, 30, W - 30), y: clamp(p.y + drag.dy, 30, H - 30) };
+    renderSvg();
+  }
+  function onUp(e) {
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('pointercancel', onUp);
+    const d = drag; drag = null;
+    if (d && !d.moved && e.type === 'pointerup') nodeClick(d.id);
+  }
+  svg.addEventListener('pointerdown', (e) => {
+    const g = e.target.closest('.node');
+    if (!g) return;
+    const id = Number(g.dataset.id);
+    const p = svgPoint(e);
+    drag = { id: id, sx: e.clientX, sy: e.clientY, dx: state.pos[id].x - p.x, dy: state.pos[id].y - p.y, moved: false };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  });
+  svg.addEventListener('keydown', (e) => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('node')) {
+      e.preventDefault();
+      nodeClick(Number(e.target.dataset.id));
+    }
+  });
+
+  /* ---------- Eventos ---------- */
+  $$('#steps button').forEach((b) => b.addEventListener('click', () => goStage(Number(b.dataset.stage))));
+  $('#nRange').addEventListener('input', (e) => setN(Number(e.target.value)));
+  $('#modeAuto').addEventListener('click', () => setMode('auto'));
+  $('#modeManual').addEventListener('click', () => setMode('manual'));
+  $('#btnRegen').addEventListener('click', () => { newAuto(); renderAll(); });
+  $('#btnReset').addEventListener('click', () => { state.pos = circlePos(state.order); renderSvg(); });
+  $('#manualBox').addEventListener('submit', (e) => {
+    e.preventDefault();
+    addEdge(parseInt($('#mFrom').value, 10), parseInt($('#mTo').value, 10), parseInt($('#mW').value, 10));
+  });
+  $('#btnClear').addEventListener('click', () => { state.edges = []; invalidate(false); say('Se quitaron todas las aristas.', ''); renderAll(); });
+  $('#edgeList').addEventListener('click', (e) => {
+    const b = e.target.closest('.x');
+    if (!b) return;
+    const u = Number(b.dataset.u), v = Number(b.dataset.v);
+    state.edges = state.edges.filter((x) => !(x.u === u && x.v === v));
+    invalidate(false);
+    say('Arista ' + u + ' → ' + v + ' quitada.', '');
+    renderAll();
+  });
+  $('#toStage2').addEventListener('click', () => goStage(2));
+  $('#backTo1').addEventListener('click', () => goStage(1));
+  $('#toStage3').addEventListener('click', () => goStage(3));
+  $('#backTo2').addEventListener('click', () => goStage(2));
+  $('#selOrigin').addEventListener('change', (e) => {
+    const o = e.target.value === '' ? null : Number(e.target.value);
+    setPair(o, state.dest === o ? null : state.dest);
+  });
+  $('#selDest').addEventListener('change', (e) => {
+    const d = e.target.value === '' ? null : Number(e.target.value);
+    setPair(state.origin === d ? null : state.origin, d);
+  });
+  $('#pFirst').addEventListener('click', () => { stopPlay(); setIdx(0); });
+  $('#pPrev').addEventListener('click', () => { stopPlay(); setIdx(state.idx - 1); });
+  $('#pNext').addEventListener('click', () => { stopPlay(); setIdx(state.idx + 1); });
+  $('#pLast').addEventListener('click', () => { stopPlay(); setIdx(state.frames.length - 1); });
+  $('#pPlay').addEventListener('click', togglePlay);
+  $('#pRange').addEventListener('input', (e) => { stopPlay(); setIdx(Number(e.target.value)); });
+  $('#resultCard').addEventListener('click', (e) => {
+    const b = e.target.closest('.path-btn');
+    if (!b) return;
+    const i = Number(b.dataset.p);
+    state.selPath = state.selPath === i ? null : i;
+    renderResult();
+    renderSvg();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (state.stage !== 3) return;
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return;
+    if (e.key === 'ArrowRight') { e.preventDefault(); stopPlay(); setIdx(state.idx + 1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); stopPlay(); setIdx(state.idx - 1); }
+  });
+
+  /* ---------- Inicio ---------- */
+  fillSelects();
+  newAuto();
+  renderAll();
+})();
+</script>
+
+</body></html>
